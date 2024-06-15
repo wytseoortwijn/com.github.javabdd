@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.NoSuchElementException;
 
 /**
@@ -603,6 +604,29 @@ public abstract class BDD {
     public abstract BDD relnext(BDD states, BDDVarSet vars);
 
     /**
+     * Computes {@code or(relnext(states, vars), union)} as a single BDD operation.
+     *
+     * @param states The BDD representing the set of states.
+     * @param union The BDD representing the set of states to add to the set of successor states.
+     * @param vars The BDD representing the set of relevant variables to consider. See {@link #relnext(BDD, BDDVarSet)
+     *     relnext} for further details.
+     * @return The BDD representing the set of successor states from {@code states}, plus all {@code union} states.
+     */
+    public abstract BDD relnextUnion(BDD states, BDD union, BDDVarSet vars);
+
+    /**
+     * Computes {@code or(relnext(states, vars), states)} as a single BDD operation.
+     *
+     * @param states The BDD representing the set of states.
+     * @param vars The BDD representing the set of relevant variables to consider. See {@link #relnext(BDD, BDDVarSet)
+     *     relnext} for further details.
+     * @return The BDD representing the set of successor states, plus all original {@code states}.
+     */
+    public BDD relnextUnion(BDD states, BDDVarSet vars) {
+        return relnextUnion(states, states, vars);
+    }
+
+    /**
      * Computes {@code and(relnext(states, vars), restriction)} as a single BDD operation.
      *
      * @param states The BDD representing the set of states.
@@ -630,6 +654,29 @@ public abstract class BDD {
     public abstract BDD relprev(BDD states, BDDVarSet vars);
 
     /**
+     * Computes {@code or(relprev(states, vars), union)} as a single BDD operation.
+     *
+     * @param states The BDD representing the set of states.
+     * @param union The BDD representing the set of states to add to the set of predecessor states.
+     * @param vars The BDD representing the set of relevant variables to consider. See {@link #relprev(BDD, BDDVarSet)
+     *     relprev} for further details.
+     * @return The BDD representing the set of predecessor states from {@code states}, plus all {@code union} states.
+     */
+    public abstract BDD relprevUnion(BDD states, BDD union, BDDVarSet vars);
+
+    /**
+     * Computes {@code or(relprev(states, vars), states)} as a single BDD operation.
+     *
+     * @param states The BDD representing the set of states.
+     * @param vars The BDD representing the set of relevant variables to consider. See {@link #relprev(BDD, BDDVarSet)
+     *     relprev} for further details.
+     * @return The BDD representing the set of predecessor states, plus all original {@code states}.
+     */
+    public BDD relprevUnion(BDD states, BDDVarSet vars) {
+        return relprevUnion(states, states, vars);
+    }
+
+    /**
      * Computes {@code and(relprev(states, vars), restriction)} as a single BDD operation.
      *
      * @param states The BDD representing the set of states.
@@ -639,6 +686,22 @@ public abstract class BDD {
      * @return The BDD representing the restricted set of predecessor states from {@code states}.
      */
     public abstract BDD relprevIntersection(BDD states, BDD restriction, BDDVarSet vars);
+
+    /**
+     * Computes the set of all states that are forward reachable with respect to the given list of transition relations,
+     * starting from the set of states represented by this BDD, by using the saturation strategy.
+     *
+     * @param relations The list of BDDs representing the transition relations to use for computing reachable states.
+     * @param vars The list of relevant BDD variables to consider per transition. This list must be equal in length than
+     *     {@code relations}, so that {@code vars[i]} is the set of relevant variables for {@code relation[i]}. See
+     *     {@link #relnext(BDD, BDDVarSet) relnext} for further requirements for these sets. Additionally, {@code vars}
+     *     must be sorted on the level of the variable occurring in each set, in increasing order.
+     * @param instance An instance number that must be unique for the given lists of relations and variables. This
+     *     number is used for caching purposes. Instead of storing lists of BDDs in every operation cache entry, which
+     *     is too memory intensive, this instance number is stored instead.
+     * @return The BDD representing all states that are forward reachable from this BDD.
+     */
+    public abstract BDD saturationForward(List<BDD> relations, List<BDDVarSet> vars, int instance);
 
     /**
      * Finds all satisfying variable assignments.
