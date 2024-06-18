@@ -366,6 +366,11 @@ public class JFactory extends BDDFactoryIntImpl {
         return bdd_saturationForward(states, relations, vars, instance);
     }
 
+    @Override
+    protected int boundedSaturationForward_impl(int states, int bound, int[] relations, int[] vars, int instance) {
+        return bdd_boundedSaturationForward(states, bound, relations, vars, instance);
+    }
+
     // More redirection functions.
 
     @Override
@@ -1422,6 +1427,8 @@ public class JFactory extends BDDFactoryIntImpl {
     static final int bddop_relprevUnion = 18;
 
     static final int bddop_saturationForward = 19;
+
+    static final int bddop_boundedSaturationForward = 20;
 
     int bdd_not(int r) {
         int res;
@@ -4032,7 +4039,9 @@ public class JFactory extends BDDFactoryIntImpl {
             result = states;
 
             while (true) {
+                PUSHREF(result);
                 result = saturationForward_rec(result, relations, vars, instance, next);
+                POPREF(1);
 
                 int previousResult = result;
                 PUSHREF(previousResult);
@@ -4057,6 +4066,173 @@ public class JFactory extends BDDFactoryIntImpl {
         entry.c = current;
         entry.d = 0;
         entry.e = bddop_saturationForward;
+        entry.res = result;
+
+        return result;
+    }
+
+    int bdd_boundedSaturationForward(int states, int bound, int[] relations, int[] vars, int instance) {
+        _assert(relations.length == vars.length);
+
+        // Check validity of BDD nodes.
+        CHECKa(states);
+        CHECKa(bound);
+
+        for (int i = 0; i < relations.length; i++) {
+            CHECKa(relations[i]);
+            CHECKa(vars[i]);
+        }
+
+        // Check proper ordering of variables in 'vars'.
+        for (int i = 0; i < vars.length - 1; i++) {
+            _assert(LEVEL(vars[i]) <= LEVEL(vars[i + 1]));
+        }
+
+        // Initialize caches if needed.
+        if (applycache == null) {
+            applycache = BddCacheI_init(cachesize);
+        }
+        if (itecache == null) {
+            itecache = BddCacheI_init(cachesize);
+        }
+
+        // We may also apply the OR operation while computing 'boundedSaturationForward'.
+        applyop = bddop_or;
+
+        int result;
+        int numReorder = 1;
+
+        again:
+        for (;;) {
+            try {
+                INITREF();
+
+                if (numReorder == 0) {
+                    bdd_disable_reorder();
+                }
+                result = boundedSaturationForward_rec(states, bound, relations, vars, instance, 0);
+
+                if (numReorder == 0) {
+                    bdd_enable_reorder();
+                }
+            } catch (ReorderException x) {
+                bdd_checkreorder();
+                numReorder--;
+                continue again;
+            }
+            break;
+        }
+
+        checkresize();
+        return result;
+    }
+
+    int boundedSaturationForward_rec(int states, int bound, int[] relations, int[] vars, int instance, int current) {
+        if (VERIFY_ASSERTIONS) {
+            _assert(!ZDD);
+        }
+
+        if (cachestats.enabled) {
+            cachestats.opAccess++;
+        }
+
+        // Terminals cases.
+        if (ISZERO(states) || ISZERO(bound)) {
+            return bddfalse;
+        }
+        if (ISONE(states)) {
+            return bddtrue;
+        }
+        if (ISONE(bound)) {
+            return saturationForward_rec(states, relations, vars, instance, current);
+        }
+        if (current == relations.length) {
+            return states;
+        }
+
+        // Consult the operation cache.
+        BddCacheDataI entry = BddCache_lookupI(itecache,
+                QUINTUPLE(states, bound, instance, current, bddop_boundedSaturationForward));
+
+        if (entry.a == states && entry.b == bound && entry.c == instance && entry.d == current
+                && entry.e == bddop_boundedSaturationForward)
+        {
+            if (cachestats.enabled) {
+                cachestats.opHit++;
+            }
+            return entry.res;
+        }
+
+        if (cachestats.enabled) {
+            cachestats.opMiss++;
+        }
+
+        // Could not find a cached result, so perform the recursive operation to compute the result.
+        int result;
+
+        int level_states = LEVEL(states);
+        int level_bound = LEVEL(bound);
+        int level = level_states < level_bound ? level_states : level_bound;
+
+        if (level < LEVEL(vars[current])) {
+            int s0, s1, b0, b1;
+            if (level_states == level) {
+                s0 = LOW(states);
+                s1 = HIGH(states);
+            } else {
+                s0 = states;
+                s1 = states;
+            }
+            if (level_bound == level) {
+                b0 = LOW(bound);
+                b1 = HIGH(bound);
+            } else {
+                b0 = bound;
+                b1 = bound;
+            }
+
+            PUSHREF(boundedSaturationForward_rec(s0, b0, relations, vars, instance, current));
+            PUSHREF(boundedSaturationForward_rec(s1, b1, relations, vars, instance, current));
+            result = bdd_makenode(level, READREF(2), READREF(1));
+            POPREF(2);
+        } else {
+            // Find the next transition relation index from which to saturate further, recursively.
+            int next = current;
+            while (next < vars.length && LEVEL(vars[next]) == LEVEL(vars[current])) {
+                next++;
+            }
+
+            // Saturate the given set of states from the 'current' transition relation onwards.
+            result = states;
+
+            while (true) {
+                PUSHREF(result);
+                result = boundedSaturationForward_rec(result, bound, relations, vars, instance, next);
+                POPREF(1);
+
+                int previousResult = result;
+                PUSHREF(previousResult);
+
+                for (int i = current; i < next; i++) {
+                    PUSHREF(result);
+                    result = or_rec(PUSHREF(relnextIntersection_rec(result, relations[i], bound, vars[i])), result);
+                    POPREF(2);
+                }
+
+                POPREF(1);
+
+                if (result == previousResult) {
+                    break;
+                }
+            }
+        }
+
+        // Update the operation cache.
+        entry.a = states;
+        entry.b = bound;
+        entry.c = instance;
+        entry.d = current;
+        entry.e = bddop_boundedSaturationForward;
         entry.res = result;
 
         return result;

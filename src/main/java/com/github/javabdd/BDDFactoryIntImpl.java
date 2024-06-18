@@ -106,6 +106,9 @@ public abstract class BDDFactoryIntImpl extends BDDFactory {
     protected abstract /* bdd */int saturationForward_impl(/* bdd */int states, /* bdds */int[] relations,
             /* bdds */int[] vars, int instance);
 
+    protected abstract /* bdd */int boundedSaturationForward_impl(/* bdd */int states, /* bdds */int bound,
+            /* bdds */int[] relations, /* bdds */int[] vars, int instance);
+
     protected abstract int nodeCount_impl(/* bdd */int v);
 
     protected abstract double pathCount_impl(/* bdd */int v);
@@ -393,6 +396,26 @@ public abstract class BDDFactoryIntImpl extends BDDFactory {
             }
 
             return makeBDD(saturationForward_impl(v, unwrappedRelations, unwrappedVars, instance));
+        }
+
+        @Override
+        public BDD boundedSaturationForward(BDD bound, List<BDD> relations, List<BDDVarSet> vars, int instance) {
+            if (relations.size() != vars.size()) {
+                throw new RuntimeException("Expected the number of relations and variable sets to be equal.");
+            }
+
+            int nrOfRelations = relations.size();
+
+            int[] unwrappedRelations = new int[nrOfRelations];
+            int[] unwrappedVars = new int[nrOfRelations];
+
+            for (int i = 0; i < nrOfRelations; i++) {
+                unwrappedRelations[i] = unwrap(relations.get(i));
+                unwrappedVars[i] = unwrap(vars.get(i));
+            }
+
+            return makeBDD(
+                    boundedSaturationForward_impl(v, unwrap(bound), unwrappedRelations, unwrappedVars, instance));
         }
     }
 

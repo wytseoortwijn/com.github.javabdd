@@ -703,6 +703,9 @@ public abstract class BDD {
      */
     public abstract BDD saturationForward(List<BDD> relations, List<BDDVarSet> vars, int instance);
 
+    // TODO JavaDoc
+    public abstract BDD boundedSaturationForward(BDD bound, List<BDD> relations, List<BDDVarSet> vars, int instance);
+
     /**
      * Finds all satisfying variable assignments.
      *
