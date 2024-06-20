@@ -703,7 +703,19 @@ public abstract class BDD {
      */
     public abstract BDD saturationForward(List<BDD> relations, List<BDDVarSet> vars, int instance);
 
-    // TODO JavaDoc
+    /**
+     * Computes the set of all forward reachable states like {@link #saturationForward(List, List, int)} while bounding
+     * the set of states to consider during the exploration by the given BDD predicate {@code bound}. That is, forward
+     * reachability will not consider states that are not in the set represented by {@code bound}.
+     *
+     * @param bound The BDD representing the upper bound of states to consider during forward reachability.
+     * @param relations The list of BDDs representing the transition relations to use for computing reachable states.
+     * @param vars The list of relevant BDD variables to consider per transition. See
+     *     {@link #saturationForward(List, List, int)} for further details.
+     * @param instance An instance number that must be unique for the given lists of relations and variables. See
+     *     {@link #saturationForward(List, List, int)} for further details.
+     * @return The BDD representing all states that are forward reachable from this BDD within the specified bound.
+     */
     public abstract BDD boundedSaturationForward(BDD bound, List<BDD> relations, List<BDDVarSet> vars, int instance);
 
     /**

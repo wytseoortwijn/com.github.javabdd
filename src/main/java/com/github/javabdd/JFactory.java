@@ -4096,7 +4096,8 @@ public class JFactory extends BDDFactoryIntImpl {
             itecache = BddCacheI_init(cachesize);
         }
 
-        // We may also apply the OR operation while computing 'boundedSaturationForward'.
+        // We may also apply the AND and OR operation while computing 'boundedSaturationForward'.
+        // Let's configure the OR operation as the default.
         applyop = bddop_or;
 
         int result;
